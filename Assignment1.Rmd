@@ -1,0 +1,60 @@
+---
+title: "Assignment 1"
+author: "Akshat Dwivedi"
+date: '`r date()`'
+html_document:
+  highlight: haddock
+  keep_md: yes
+  theme: journal
+  toc: yes
+  toc_float: yes
+  toc_depth: 2
+pdf_document:
+  highlight: haddock
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache = TRUE, echo = FALSE)
+#If you run into problems with cached output you can always clear the knitr cache by removing the folder named with a _cache suffix within your document’s directory.
+```
+
+```{r include=FALSE}
+library(faraway)
+library(dplyr)
+
+motor = motorins
+```
+
+# Question 1
+
+As an initial step, we fit a GLM model to the motorins data from the package `faraway` with `perd` (payment per claim) as the response variable, all the covariates (except payment and claim since perd is a ratio of these two variables), and assuming a Gamma distribution for the response variable with the *inverse* link function as an initial step. The inverse link function is the default link function for Gamma regression models. The table below shows the (spearman) correlation between the continuous variables in the motorins data. This was chosen over the pearson correlation due to the presence of extreme outliers and rejection of the multivariate normality assumption for pairs of variables using Mardia's Multivariate Normality Test.
+
+```{r}
+cor(motor[,5:7], method = "spearman")
+```
+
+This shows that the variables are highly correlated with each other indicating multicollinearity. Including claims, payment and insurance in the model together will lead to inflated std errors of the estimated regression coefficients. This can be measured by looking at the next two tables which show VIF and the square root of the VIF which shows how high the standard errors of the coefficients are compared to a model with uncorrelated predictors. 
+
+```{r}
+diag(solve(cor(motor[,c(5,6,7)], method = "spearman"))) # gives us the VIF
+```
+
+And the square root given by
+
+```{r}
+sqrt(diag(solve(cor(motor[,c(5,6,7)], method = "spearman")))) # gives us the VIF
+```
+
+Based on this, we drop Claims from the models that will be fit to the data and decide to keep payment in the mdoel.
+
+```{r}
+fit1 = glm(perd ~ ., family = Gamma(link = "inverse"), data = motor[,-6])
+summary(fit1)
+```
+
+We can select the covariates to be included in the model using stepwise selection using the Akaike Information Criterion. The following table shows the output from running stepwise selection on the fitted model.
+
+```{r}
+
+```
+
