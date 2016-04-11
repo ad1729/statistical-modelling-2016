@@ -12,6 +12,7 @@ diagnostic <- function(fit) {
 
 ## ------ Question 1 --------
 library(faraway)
+library(ggplot2)
 library(dplyr)
 #library(MVN)
 
@@ -152,13 +153,19 @@ b
 str(cars)
 #x = cars$speed
 #y = cars$dist
-x = scale(cars$speed, scale = FALSE)
-y = scale(cars$dist, scale = FALSE)
+# x = scale(cars$speed, scale = FALSE)
+# y = scale(cars$dist, scale = FALSE)
+# 
+# These next three lines are taken from the lm.ridge implementation in MASS for comparison and checking if lm.ridge scales the variables or only centers them. (Note: lm.ridge() uses biased estimator (1/n) of sigma; scale() uses unbiased estimator (1/(n-1)) for sigma)
+# 
+# n <- nrow(design_matrix); p <- ncol(design_matrix)
+# Xscale <- drop(rep(1/n, n) %*% design_matrix^2)^0.5
+# X <- design_matrix/rep(Xscale, rep(n, p))
 
 x = scale(cars$speed)
 y = scale(cars$dist)
 
-lambda = seq(from = 0, to = 10000, length = 100)
+lambda = seq(from = 0, to = 100, length = 100)
 length(lambda)
 head(lambda)
 
@@ -167,6 +174,9 @@ head(lambda)
 #                            speed2 = x ^ 2)
 
 design_matrix = data.frame(speed = x, speed2 = x ^ 2)
+
+cor(cars$speed, (cars$speed) ^ 2)
+cor(design_matrix[,1], design_matrix[,2])
 
 ridge = function(x, y, lambda) {
   
@@ -196,11 +206,12 @@ for (i in 1:length(lambda)) {
 
 plot(lambda, estimated_coef$speed2, xlab = "lambda", ylab = "Coefficient of Quadratic Effect", type = "l")
 
+ggplot(data = estimated_coef, aes(x = lambda, y = speed2)) + geom_line() + xlab("lambda") + ylab("Coefficient of Quadratic Effect") + ggtitle("Plot of beta_2 vs lambda") + theme_bw()
 
 ## cross checking with inbuilt methods
-lm_ridge = MASS::lm.ridge(y ~ 0 + speed + speed2, data = design_matrix, lambda = lambda)
+lm_ridge = MASS::lm.ridge(y ~ 1 + speed + speed2, data = design_matrix, lambda = lambda)
 lm_ridge$Inter
-lm_ridge$scales
+lm_ridge$scales # uses the biased scale (sigma) estimator 1/n instead of unbiased with 1/(n-1) (Bessel's correction)
 summary(lm_ridge)
 plot(lambda, data.frame(t(lm_ridge$coef))$speed2, type = "l")
 MASS::select(lm_ridge)

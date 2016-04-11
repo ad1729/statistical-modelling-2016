@@ -73,7 +73,7 @@ E(\hat{\beta}_R) &= E[(I_p + \lambda (X^t X)^{-1})^{-1} \beta] \\
 				 &= (I_p + \lambda (X^t X)^{-1})^{-1} \beta
 \end{align}
 
-since $E(\varepsilon) = 0$ and using the least squares property that $E(\beta_{LS}) = \beta_{LS}$ since least squares is an unbiased estimator of $\beta$. Using $\textrm{bias}(\hat{\beta}_R) = E(\hat{\beta}_R) - \beta$, we get
+since $E(\varepsilon) = 0$ and using the least squares property that $E(\hat{\beta}_{LS}) = \hat{\beta}_{LS}$ since least squares is an unbiased estimator of $\beta$. Using $\textrm{bias}(\hat{\beta}_R) = E(\hat{\beta}_R) - \beta$, we get
 
 \begin{align}
 \textrm{bias}(\hat{\beta}_R) = ((I_p + \lambda (X^t X)^{-1})^{-1}) - I_p) \beta
@@ -88,15 +88,15 @@ Compute the variance of the estimator $\hat{\beta}_R$. Note that variance is a m
 
 \begin{proof}
 
-We use the result $\hat{\beta}_R = A \beta_{LS}$ where $A = (I_p + \lambda(X^t X)^{-1})^{-1}$ from part(a) above. The expression for variance is derived as follows:
+We use the result $\hat{\beta}_R = A \hat{\beta}_{LS}$ where $A = (I_p + \lambda(X^t X)^{-1})^{-1}$ from part(a) above. The expression for variance is derived as follows:
 
 \begin{align}
-Var(\hat{\beta}_R) &= Var(A \beta_{LS}) \\
-&= A Var(\beta_{LS}) A^t \\
+Var(\hat{\beta}_R) &= Var(A \hat{\beta}_{LS}) \\
+&= A Var(\hat{\beta}_{LS}) A^t \\
 &= \sigma^2 A (X^t X)^{-1} A^t
 \end{align}
 
-using the fact that $Cov(AX, BY) = A Cov(X, Y) B^t$ and substituting the value of A which results in the desired expression 
+using the fact that $Cov(AX, BY) = A Cov(X, Y) B^t$, $ \text{Var}(\hat{\beta}_{LS}) = \sigma^2 (X^t X)^{-1}$, and substituting the value of A which results in the desired expression 
 
 \begin{align}
 Var(\hat{\beta}_R) = \sigma^2 (I_p + \lambda(X^t X)^{-1})^{-1} (X^t X)^{-1} ((I_p + \lambda(X^t X)^{-1})^{-1})^t
@@ -130,11 +130,11 @@ The expression for $\textrm{Var}(\hat{Y}_R)$ is derived as follows
 \begin{align}
 \textrm{Var}(\hat{Y}_R) &= \text{Var}(X \hat{\beta}_R) \\
 &= \text{Var}(X A \hat{\beta}_{LS}) \\
-&= (XA) \text{Var}(\hat{\beta}_{LS})(XA)^t \\
-&= \sigma^2(XA)(X^t X)(XA)^t
+&= (XA) \text{Var}(\hat{\beta}_{LS}) (XA)^t \\
+&= \sigma^2(XA)(X^t X)^{-1}(XA)^t
 \end{align}
 
-where $\textrm{A} = (I_p + \lambda (X^t X)^{-1})^{-1}$.
+using $ \text{Var}(\hat{\beta}_{LS}) = \sigma^2 (X^t X)^{-1}$ and where $\textrm{A} = (I_p + \lambda (X^t X)^{-1})^{-1}$.
 
 \end{proof}
 

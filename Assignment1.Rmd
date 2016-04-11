@@ -50,10 +50,10 @@ Based on this, we drop Claims from the models that will be fit to the data and d
 
 ```{r}
 fit1 = glm(perd ~ ., family = Gamma(link = "inverse"), data = motor[,-6])
-summary(fit1)
+#summary(fit1)
 ```
 
-We can select the covariates to be included in the model using stepwise selection using the Akaike Information Criterion. The following table shows the output from running stepwise selection on the fitted model.
+Since we are not interested in *stargazing*, we omit the output from the model fit and report that the AIC value for the fitted model is given as `r AIC(fit1)`. Next, we select the covariates to be included in the model using the stepwise selection approach combined with Akaike Information Criterion. The following table shows the output from running stepwise selection on the fitted model.
 
 ```{r}
 MASS::stepAIC(fit1, k = 2, scope = list(upper = ~., lower = ~1) , direction = "both")
@@ -67,6 +67,14 @@ Next, we fit a Gamma model with the log link function.
 ## (c)
 
 ## (d)
+
+# Question 2
+
+
+
+# Question 3
+
+**Included separately, attached at the end of this document.**
 
 # Question 4
 
@@ -88,11 +96,11 @@ ridge = function(x, y, lambda) {
 }
 ```
 
-We evaluate the coefficients for $\lambda \in \{0,1,2,3,\ldots,100\}$, i.e. for 100 equally spaced values of lambda starting from 0 and ending on 100. Furthermore, the variables are centered so the intercept term does not need to be estimated and can be dropped from the model. Thus, only coefficients $\beta_1$ and $\beta_2$ are estimated for the model. The next figure contains the a plot of the $\beta_2$ vs $\lambda$.
+We evaluate the coefficients for $\lambda \in \{0,1,2,3,\ldots,100\}$, i.e. for 100 equally spaced values of lambda starting from 0 and ending on 100. Furthermore, the variables are centered and scaled so the intercept term does not need to be estimated and can be dropped from the model. Thus, only coefficients $\beta_1$ and $\beta_2$ are estimated for the model. The next figure contains the a plot of the $\beta_2$ vs $\lambda$.
 
 ```{r}
-x = scale(cars$speed, scale = FALSE)
-y = scale(cars$dist, scale = FALSE)
+x = scale(cars$speed)
+y = scale(cars$dist)
 lambda = seq(from = 0, to = 100, length = 100)
 design_matrix = data.frame(speed = x, speed2 = x ^ 2)
 
@@ -103,7 +111,13 @@ for (i in 1:length(lambda)) {
   estimated_coef = rbind(estimated_coef, ridge(design_matrix, y, lambda[i]))
 }
 
-plot(lambda, estimated_coef$speed2, xlab = "lambda", ylab = "Coefficient of Quadratic Effect", type = "l")
+ggplot(data = estimated_coef, aes(x = lambda, y = speed2)) + geom_line() + xlab("lambda") + ylab("Coefficient of Quadratic Effect") + ggtitle("Plot of beta_2 vs lambda") + theme_bw()
 ```
 
+From the plot above, we see that as the value of $\lambda$ increases, the shrinkage of the coefficient(s) tends towards zero, i.e., the coefficients get smaller and smaller. For example, for $\lambda = 0$, $\hat{\beta}_2 \approx 0.06$ whereas $\hat{\beta}_2 = 0.02$ for $\lambda = 100$.
+
+# Appendix (R Code)
+```{r, eval = FALSE, echo = TRUE}
+
+```
 
