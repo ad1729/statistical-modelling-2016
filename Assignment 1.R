@@ -154,7 +154,11 @@ str(cars)
 #y = cars$dist
 x = scale(cars$speed, scale = FALSE)
 y = scale(cars$dist, scale = FALSE)
-lambda = seq(from = 0, to = 100, length = 100)
+
+x = scale(cars$speed)
+y = scale(cars$dist)
+
+lambda = seq(from = 0, to = 10000, length = 100)
 length(lambda)
 head(lambda)
 
@@ -191,6 +195,7 @@ for (i in 1:length(lambda)) {
 }
 
 plot(lambda, estimated_coef$speed2, xlab = "lambda", ylab = "Coefficient of Quadratic Effect", type = "l")
+
 
 ## cross checking with inbuilt methods
 lm_ridge = MASS::lm.ridge(y ~ 0 + speed + speed2, data = design_matrix, lambda = lambda)
