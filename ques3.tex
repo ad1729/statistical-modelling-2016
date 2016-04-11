@@ -1,0 +1,141 @@
+\documentclass[paper=a4, fontsize=11pt]{scrartcl} %twocolumn, 
+
+\usepackage[utf8]{inputenc} % Use 8-bit encoding that has 256 glyphs
+
+%\usepackage{fourier} % Use the Adobe Utopia font for the document - comment this line to return to the LaTeX default
+\usepackage[english]{babel} % English language/hyphenation
+
+\usepackage{amsmath,amsfonts,amsthm,amssymb} % Math packages, use \sim to get tilde
+
+\usepackage{verbatim} %use \begin{comment} and \end{comment}. For more complex tasks, check out package:comment
+
+\usepackage{bm} % for printing greek symbols in bold, use \boldsymbol\varepsilon
+
+% custom commands
+\newcommand{\mytilde}{\raise.17ex\hbox{$\scriptstyle\mathtt{\sim}$}}
+
+\numberwithin{equation}{section} % Number equations within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+%\numberwithin{figure}{section} % Number figures within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+%\numberwithin{table}{section} % Number tables within sections (i.e. 1.1, 1.2, 2.1, 2.2 instead of 1, 2, 3, 4)
+
+\pagenumbering{arabic}
+
+%--------------------------------------------------------------------------------
+
+\title{Statistical Modelling Assignment 1}
+\author{Akshat Dwivedi (r0475672)}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Question 3}
+
+Consider the linear model in matrix form $Y = X\beta + \varepsilon$, with $\texttt{Var}(\varepsilon) = \sigma^2 I_n$, $Y = (Y_1, \ldots, Y_n)^t$, $\beta = (\beta_1, \ldots, \beta_p)^t$, X an $n$ x $p$ matrix and $\varepsilon = (\varepsilon_1, \ldots, \varepsilon_n)^t$ be the vector of residuals. Consider the ridge regression estimator $\hat{\beta_R} = (X^tX + \lambda I_p)^{-1} X^t Y$.
+
+\subsection*{Part (a)}
+
+Compute the bias of the estimator $\hat{\beta_R}$ using that for $A = (I_p + \lambda(X^t X)^{-1})^{-1}$, it holds that $\hat{\beta_R} = A \hat{\beta_{LS}}$, with $\hat{\beta_{LS}}$ the least squares estimator of $\beta$.
+
+\begin{proof}
+
+Consider the ridge regression estimator
+
+\begin{align}
+\hat{\beta}_R = (X^t X + \lambda I_p)^{-1} X^t Y
+\end{align}
+
+Using $I = (X^t X)(X^t X)^{-1}$ and substituting into the equation above gives us
+
+\begin{align}
+\hat{\beta}_R = (X^t X + \lambda (X^t X)(X^t X)^{-1})^{-1} X^t Y
+\end{align}
+
+Taking $(X^t X)$ common and using $(AB)^{-1} = B^{-1}A^{-1}$ we get
+
+\begin{align}
+\hat{\beta}_R = (I_p + \lambda (X^t X)^{-1})^{-1} (X^t X)^{-1} X^t Y 
+\end{align}
+
+Substituting $Y = X \beta + \varepsilon$ into the previous equation gives us
+
+\begin{align}
+\hat{\beta}_R &= (I_p + \lambda (X^t X)^{-1})^{-1} (X^t X)^{-1} X^t (X \beta + \bm{\varepsilon} ) \\
+			  &=(I_p + \lambda (X^t X)^{-1})^{-1} \beta + (I_p + \lambda (X^t X)^{-1})^{-1} (X^t X)^{-1} X^t \bm{\varepsilon}
+\end{align}
+
+because $(X^t X)^{-1} (X^t X) = I$.  Taking the expectation, we get
+
+\begin{align}
+E(\hat{\beta}_R) &= E[(I_p + \lambda (X^t X)^{-1})^{-1} \beta] \\
+				 &= (I_p + \lambda (X^t X)^{-1})^{-1} E(\beta) \\
+				 &= (I_p + \lambda (X^t X)^{-1})^{-1} \beta
+\end{align}
+
+since $E(\varepsilon) = 0$ and using the least squares property that $E(\beta_{LS}) = \beta_{LS}$ since least squares is an unbiased estimator of $\beta$. Using $\textrm{bias}(\hat{\beta_R}) = E(\hat{\beta_R}) - \beta$, we get
+
+\begin{align}
+\textrm{bias}(\hat{\beta_R}) = ((I_p + \lambda (X^t X)^{-1})^{-1}) - I_p) \beta
+\end{align}
+
+which is the desired expression for $\textrm{bias}(\hat{\beta_R})$.
+\end{proof}
+
+\subsection*{Part (b)}
+
+Compute the variance of the estimator $\hat{\beta_R}$. Note that variance is a matrix.
+
+\begin{proof}
+
+We use the result $\hat{\beta_R} = A \beta_{LS}$ where $A = (I_p + \lambda(X^t X)^{-1})^{-1}$ from part(a) above. The expression for variance is derived as follows:
+
+\begin{align}
+Var(\hat{\beta_R}) &= Var(A \beta_{LS} \\
+&= A Var(\beta_{LS}) A^t \\
+&= \sigma^2 A (X^t X)^{-1} A^t
+\end{align}
+
+using the fact that $Cov(AX, BY) = A Cov(X, Y) B^t$ and substituting the value of A which results in the desired expression 
+
+\begin{align}
+Var(\hat{\beta_R}) = \sigma^2 (I_p + \lambda(X^t X)^{-1})^{-1} (X^t X)^{-1} ((I_p + \lambda(X^t X)^{-1})^{-1})^t
+\end{align}
+
+\end{proof}
+
+\subsection*{Part (c)}
+
+Finally, we derive the expressions for the bias and variance of $\hat{Y_R}$, where $\hat{Y_R} = X \hat{\beta_R}$.
+
+\begin{proof}
+
+The expression for bias is obtained as follows:
+
+\begin{align}
+E[\hat{Y}_R] &= E[X \hat{\beta}_R] \\
+&= X E[\hat{\beta}_R] \\
+&= X (I_p + \lambda (X^t X)^{-1})^{-1} \beta
+\end{align}
+
+using $\text{bias}(\hat{Y}_R) = E[\hat{Y}_R] - E[Y]$
+
+\begin{align}
+\textrm{bias}(\hat{Y}_R) &= X (I_p + \lambda (X^t X)^{-1})^{-1} \beta - X \beta \\
+&= X ((I_p + \lambda (X^t X)^{-1})^{-1} - I_p) \beta
+\end{align}
+
+The expression for $\textrm{Var}(\hat{Y_R})$ is derived as follows
+
+\begin{align}
+\textrm{Var}(\hat{Y}_R) &= \text{Var}(X \hat{\beta}_R) \\
+&= \text{Var}(X A \hat{\beta}_{LS}) \\
+&= (XA) \text{Var}(\hat{\beta}_{LS})(XA)^t \\
+&= \sigma^2(XA)(X^t X)(XA)^t
+\end{align}
+
+where $\textrm{A} = (I_p + \lambda (X^t X)^{-1})^{-1}$.
+
+\end{proof}
+
+\end{document}

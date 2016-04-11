@@ -97,9 +97,49 @@ var(motor$Claims)/mean(motor$Claims)
 summary(update(fit, . ~ . , family = quasipoisson))
 
 
-
 ## ------ Question 2 --------
-?poly
+# 2. Exercise 22 on page 77 using the U.S. temperature data. You may use the code for the p-value from
+# Exercise 21 with the m in that formula a large number (such as 100), and the cn the value of the test
+# statistic Tn,OS that you have computed. This exercise requires some R programming for (b) and (c).
+
+library(SemiPar)
+data(ustemp)
+names(ustemp)
+?ustemp
+
+hist(ustemp$min.temp, breaks = 10)
+
+## (a)
+mod1 = glm(min.temp ~ latitude + longitude, family = "gaussian", data = ustemp) 
+summary(mod1)
+mod2 = update(mod1, . ~ latitude * longitude)
+summary(mod2)
+
+AIC(mod1, mod2)
+
+## (b)
+## pvalue = 1 - exp(-sum((1-pchisq((1:m) * cn, 1:m))/(1:m)))
+
+m = 100 # try m = 100, 1000, 10000
+cn = 3.19 # 2 gives us ~0.29, 4.18 ~ 0.05, 6.7 ~ 0.01, 3.19 ~ 0.10
+
+pvalue = 1 - exp(-sum((1 - pchisq((1:m) * cn, 1:m))/(1:m)))
+pvalue
+
+
+
+
+## ------ Question 3 --------
+
+foo = diag(1,3)
+bar = matrix(rnorm(9), ncol = 3)
+
+# assume lambda = 1
+a = solve((foo + solve((t(bar) %*% bar))))
+b = (solve(foo) + (t(bar) %*% bar))
+
+a
+b
 
 ## ------ Question 4 --------
 # Consider the R dataset cars with the covariate x=cars$speed and response y=cars$dist. For a grid
@@ -110,15 +150,19 @@ summary(update(fit, . ~ . , family = quasipoisson))
 # effect as a function of λ. Discuss what you see on the plot.
 
 str(cars)
-x = cars$dist
-y = cars$speed
+#x = cars$speed
+#y = cars$dist
+x = scale(cars$speed, scale = FALSE)
+y = scale(cars$dist, scale = FALSE)
 lambda = seq(from = 0, to = 100, length = 100)
 length(lambda)
 head(lambda)
 
-design_matrix = data.frame(intercept = rep(1, length(x)),
-                           distance = x,
-                           distance2 = x ^ 2)
+# design_matrix = data.frame(intercept = rep(1, length(x)),
+#                            speed = x,
+#                            speed2 = x ^ 2)
+
+design_matrix = data.frame(speed = x, speed2 = x ^ 2)
 
 ridge = function(x, y, lambda) {
   
@@ -131,26 +175,31 @@ ridge = function(x, y, lambda) {
   xt_x = t(x) %*% as.matrix(x)
   lambda_matrix = lambda * diag(x = 1, nrow = ncol(x))
   beta_ridge = solve(xt_x + lambda_matrix) %*% (t(x) %*% y) %>% t() %>% data.frame()
-  return(beta_ridge$distance2)
+  #print(beta_ridge)
+  #print(str(beta_ridge))
+  return(beta_ridge)
 }
 
 ## testing if it works
 ridge(design_matrix, y, 0.1)
 
 ## getting the estimated coefficient values for different lambda values between 0 and 1
-estimated_coef = c()
+estimated_coef = data.frame()
 
 for (i in 1:length(lambda)) {
-  estimated_coef[i] = ridge(design_matrix, y, lambda[i])
+  estimated_coef = rbind(estimated_coef, ridge(design_matrix, y, lambda[i]))
 }
 
-plot(lambda, estimated_coef, xlab = "lambda", ylab = "Coefficient of Quadratic Effect", type = "l")
+plot(lambda, estimated_coef$speed2, xlab = "lambda", ylab = "Coefficient of Quadratic Effect", type = "l")
 
-
-
-
-
-
+## cross checking with inbuilt methods
+lm_ridge = MASS::lm.ridge(y ~ 0 + speed + speed2, data = design_matrix, lambda = lambda)
+lm_ridge$Inter
+lm_ridge$scales
+summary(lm_ridge)
+plot(lambda, data.frame(t(lm_ridge$coef))$speed2, type = "l")
+MASS::select(lm_ridge)
+lm_ridge$coef
 
 
 

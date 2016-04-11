@@ -58,10 +58,10 @@ We can select the covariates to be included in the model using stepwise selectio
 MASS::stepAIC(fit1, k = 2, scope = list(upper = ~., lower = ~1) , direction = "both")
 ```
 
-This shows that dropping Kilometres or Bonus from the main effects model leads to the lowest AIC values of 33825. However, dropping Kilometres from the model in the next step results in a larger AIC value. 
+This shows that dropping Kilometres or Bonus from the main effects model leads to the lowest AIC values of 33825. However, dropping Kilometres from the model in the next step results in a larger AIC value and we decide to keep it in the model. 
 
 ## (b)
-Next, we fit a Gamma model with the log link function
+Next, we fit a Gamma model with the log link function.
 
 ## (c)
 
