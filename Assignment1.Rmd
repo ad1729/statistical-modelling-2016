@@ -1,14 +1,14 @@
 ---
-title: "Assignment 1"
-author: "Akshat Dwivedi"
-date: '`r date()`'
 html_document:
-  highlight: haddock
+  highlight: monochrome
   keep_md: yes
   theme: journal
-  toc: yes
+  toc: no
   toc_float: yes
   toc_depth: 2
+author: "Akshat Dwivedi"
+date: '`r date()`'
+title: "Assignment 1"
 pdf_document:
   highlight: haddock
 ---
@@ -20,6 +20,7 @@ knitr::opts_chunk$set(cache = TRUE, echo = FALSE)
 
 ```{r include=FALSE}
 library(faraway)
+library(ggplot2)
 library(dplyr)
 
 motor = motorins
@@ -66,5 +67,43 @@ Next, we fit a Gamma model with the log link function.
 ## (c)
 
 ## (d)
+
+# Question 4
+
+This question comprises implementing the ridge regression estimator $\hat{\beta}_R = (X^t X + \lambda I_p)^{-1} X^t Y$ in R and using this implementation to estimate the coefficients of the following quadratic additive model $$dist = \beta_0 + \beta_1 * speed + \beta_2 * speed^2 + \varepsilon$$ and plotting the estimated values of $\beta_2$ vs different values of $\lambda$. The `cars` dataset included in R contains the variables `speed` and `distance`. The funtion that implements the ridge estimator in code is given below.
+
+```{r, echo = TRUE}
+ridge = function(x, y, lambda) {
+  
+  # x : design matrix
+  # y : response variable
+  # lambda : scalar; lambda parameter in the ridge estimator
+  # \beta = [(X^t * X + \lambda * I_p) ^ -1] * (X^t * Y)
+  # p = ncol(x) in the above statement
+  
+  xt_x = t(x) %*% as.matrix(x)
+  lambda_matrix = lambda * diag(x = 1, nrow = ncol(x))
+  beta_ridge = solve(xt_x + lambda_matrix) %*% (t(x) %*% y) %>% t() %>% data.frame()
+  return(beta_ridge)
+}
+```
+
+We evaluate the coefficients for $\lambda \in \{0,1,2,3,\ldots,100\}$, i.e. for 100 equally spaced values of lambda starting from 0 and ending on 100. Furthermore, the variables are centered so the intercept term does not need to be estimated and can be dropped from the model. Thus, only coefficients $\beta_1$ and $\beta_2$ are estimated for the model. The next figure contains the a plot of the $\beta_2$ vs $\lambda$.
+
+```{r}
+x = scale(cars$speed, scale = FALSE)
+y = scale(cars$dist, scale = FALSE)
+lambda = seq(from = 0, to = 100, length = 100)
+design_matrix = data.frame(speed = x, speed2 = x ^ 2)
+
+## getting the estimated coefficient values for different lambda values between 0 and 1
+estimated_coef = data.frame()
+
+for (i in 1:length(lambda)) {
+  estimated_coef = rbind(estimated_coef, ridge(design_matrix, y, lambda[i]))
+}
+
+plot(lambda, estimated_coef$speed2, xlab = "lambda", ylab = "Coefficient of Quadratic Effect", type = "l")
+```
 
 
