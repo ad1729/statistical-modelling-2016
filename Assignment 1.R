@@ -88,7 +88,7 @@ MASS::stepAIC(fit1, k = log(nrow(motor)), scope = list(upper = ~., lower = ~1) ,
 MASS::stepAIC(fit2, k = log(nrow(motor)), scope = list(upper = ~., lower = ~1), direction = "both")
 
 ## checking overdispersion for claims
-fit = glm(Claims ~ ., family = poisson, data = motor[,-8])
+fit = glm(Claims ~ ., family = "poisson", data = motor[,-8])
 summary(fit)
 par(mfrow = c(2,2))
 plot(fit)
@@ -127,7 +127,79 @@ cn = 3.19 # 2 gives us ~0.29, 4.18 ~ 0.05, 6.7 ~ 0.01, 3.19 ~ 0.10
 pvalue = 1 - exp(-sum((1 - pchisq((1:m) * cn, 1:m))/(1:m)))
 pvalue
 
+##
+X = poly(ustemp$latitude, ustemp$longitude)
+x1 = X[,1]
+x2 = X[,2]
+Y  = ustemp$min.temp
 
+pvalue = function(c_n, m = 100) {
+  1 - exp((-sum((1 - pchisq((1:m) * c_n, 1:m))/(1:m))))
+}
+compare_models = function(null_formula, alt_formula, Cn = 4.18){
+  null_model = lm(null_formula)
+  null_logLik = logLik(null_model)
+  altn_model = lm(alt_formula)
+  altn_logLik = logLik(altn_model)
+  Tn = 2 * (altn_logLik - null_logLik) / (attr(altn_logLik, "df") - attr(null_logLik, "df"))
+  reject = Tn > Cn
+  out = data.frame(Tn = Tn, Reject = reject)
+  return(out)
+}
+model_list = function(order, interactions = TRUE) {
+  model_form = vector()
+  k=1
+  for(i in 1:order){
+    if(interactions == TRUE) {
+      for(j in 0:(i-1)){
+        model_form[k] = paste("I(x1^",i," * ","x2^", j,")", sep="")
+        k=k+1
+        model_form[k] = paste("I(x1^",j," * ","x2^", i,")", sep="")
+        k=k+1
+      }
+    }
+    model_form[k] = paste("I(x1^",i," * ","x2^", i,")", sep="")
+    k=k+1
+  }
+  return(model_form)
+}
+order = 3
+model_form = model_list(order)
+null_model = Y ~ I(x1) + I(x2)
+
+output = sapply(order:length(model_form), function(x){
+  compare_models(null_model, paste("Y ~ ", paste(model_form[1:x], collapse = "+")))
+})
+model_comparison = as.data.frame(t(output))
+model_comparison$model_form = model_form[order:length(model_form)]
+best_model_idx = which.max(model_comparison$Tn)
+best_model = model_comparison[best_model_idx,]
+best_formula = paste("Y ~", paste(model_form[1:best_model_idx], collapse = " + ") ) 
+best_p_value = pvalue(unlist(best_model$Tn))
+
+str(model_comparison)
+
+## (c)
+k = 5
+null_form = model_list(k, interactions = FALSE)
+null_model = paste("Y ~ ", paste(null_form, collapse = " + "))
+model_form = model_list(k)
+model_form = setdiff(model_form, null_form)
+model_form = c(null_form, model_form)
+
+output = sapply((k+1):length(model_form), function(x){
+  compare_models(null_model, paste("Y ~ ", paste(model_form[1:x], collapse = "+")))
+})
+model_comparison = as.data.frame(t(output))
+model_comparison$model_form = model_form[(k+1):length(model_form)]
+best_model_idx = which.max(model_comparison$Tn)
+best_model = model_comparison[best_model_idx,]
+best_formula = paste("Y ~", paste(model_form[1:best_model_idx], collapse = " + ") ) 
+best_p_value = pvalue(unlist(best_model$Tn))
+
+model_comparison
+best_formula
+best_p_value
 
 
 ## ------ Question 3 --------
@@ -209,7 +281,7 @@ plot(lambda, estimated_coef$speed2, xlab = "lambda", ylab = "Coefficient of Quad
 ggplot(data = estimated_coef, aes(x = lambda, y = speed2)) + geom_line() + xlab("lambda") + ylab("Coefficient of Quadratic Effect") + ggtitle("Plot of beta_2 vs lambda") + theme_bw()
 
 ## cross checking with inbuilt methods
-lm_ridge = MASS::lm.ridge(y ~ 1 + speed + speed2, data = design_matrix, lambda = lambda)
+lm_ridge = MASS::lm.ridge(y ~ 0 + speed + speed2, data = design_matrix, lambda = lambda)
 lm_ridge$Inter
 lm_ridge$scales # uses the biased scale (sigma) estimator 1/n instead of unbiased with 1/(n-1) (Bessel's correction)
 summary(lm_ridge)

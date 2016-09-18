@@ -7,14 +7,14 @@ html_document:
   toc_float: yes
   toc_depth: 2
 author: "Akshat Dwivedi"
-date: '`r date()`'
-title: "Assignment 1"
+date: "12-04-2016"
+title: "Statistical Modelling Assignment 1"
 pdf_document:
   highlight: haddock
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(cache = TRUE, echo = FALSE)
+knitr::opts_chunk$set(cache = TRUE, echo = FALSE, warning = FALSE)
 #If you run into problems with cached output you can always clear the knitr cache by removing the folder named with a _cache suffix within your document’s directory.
 ```
 
@@ -22,6 +22,8 @@ knitr::opts_chunk$set(cache = TRUE, echo = FALSE)
 library(faraway)
 library(ggplot2)
 library(dplyr)
+
+options(scipen = 999)
 
 motor = motorins
 ```
@@ -53,7 +55,7 @@ fit1 = glm(perd ~ ., family = Gamma(link = "inverse"), data = motor[,-6])
 #summary(fit1)
 ```
 
-Since we are not interested in *stargazing*, we omit the output from the model fit and report that the AIC value for the fitted model is given as `r AIC(fit1)`. Next, we select the covariates to be included in the model using the stepwise selection approach combined with Akaike Information Criterion. The following table shows the output from running stepwise selection on the fitted model.
+We omit the output from the model fit and report that the AIC value for the fitted model is given as `r round(AIC(fit1), 2)`. Next, we select the covariates to be included in the model using the stepwise selection approach combined with Akaike Information Criterion. The following table shows the output from running stepwise selection on the fitted model.
 
 ```{r}
 MASS::stepAIC(fit1, k = 2, scope = list(upper = ~., lower = ~1) , direction = "both")
@@ -62,15 +64,123 @@ MASS::stepAIC(fit1, k = 2, scope = list(upper = ~., lower = ~1) , direction = "b
 This shows that dropping Kilometres or Bonus from the main effects model leads to the lowest AIC values of 33825. However, dropping Kilometres from the model in the next step results in a larger AIC value and we decide to keep it in the model. 
 
 ## (b)
-Next, we fit a Gamma model with the log link function.
+Next, we fit a Gamma model with the log link function. The AIC for the two models are
+
+```{r}
+fit2 = update(fit1, family = Gamma(link = "log"))
+AIC(fit1, fit2)
+```
+
+We see that using the log link leads to a marginal improvement. Howvever, it is observed that running the model with log-link allows us to fit a model with all the covariates (including claims) and, hence we prefer this model over the model with the inverse link.
 
 ## (c)
 
+In this part, we perform stepwise selection on the gamma model with the log link function and including all the covariates in the biggest model but using BIC instead of the AIC as was done in part (a).
+
+```{r, include=FALSE}
+fit3 = update(fit1, family = Gamma(link = "log"), data = motor)
+step_BIC = MASS::stepAIC(fit3, k = log(nrow(motor)), scope = list(upper = ~., lower = ~1) , direction = "both")
+```
+
+```{r}
+step_BIC$call
+```
+
+We see that the model with the variables Insured, Claims and Payment resulted in the smallest BIC with a value of `r BIC(step_BIC)`. However, it should be noted that the model did not converge to the final model and the selected model may not necessarily be the best one. 
+
 ## (d)
+
+```{r}
+fit = glm(Claims ~ ., family = "poisson", data = motor[,-8])
+```
+
+We wish to see if the variable claims can be modelled by a Poisson GLM. However, for a Poisson model, the dispersion parameter is set to be 1. Violation of this can lead to what is known as under/over dispersion which means that an unobserved variable, while not impacting the mean of the response Y, does affect the variance of Y. Overdisperson is when the variance of the response Y is larger than what is expected from the Poisson model. Underdispersion is when this conditional variance of Y (on the unobserved variable) is less than what is captured by the model. We can test for under/overdispersion by calculating the ratio of residual deviance to the residual degrees of freedom. This results in `r fit$deviance/fit$df.residual` which indicates that there is significant overdispersion in the model. Fitting a quasipoisson model estimates the overdispersion parameter to be 19.76. Another indicator for overdispersion would be to take the ratio Var(Y)/E(Y). If this ratio is significantly larger than 1, then it violates the Poisson assumption that the mean = variance. The var/mean ratio for the Claims variable is `r var(motor$Claims)/mean(motor$Claims)` which indicates overdispersion as it is greater than 1.
 
 # Question 2
 
+We consider the US temperature data that are available in the R package SemiPar which has 56 observations on the temperature (minimum average January temperature) and location of 56 US cities (city name, latitude and longitude). The response variable is minimum temperature and latitude and longitude are the two predictor variables.
 
+```{r}
+library(SemiPar)
+data(ustemp)
+```
+
+## (a)
+First, we fit the additive model $temp = \beta_0 + \beta_1 * latitude + \beta_2 * longitude + \varepsilon$ to the dataset, followed by an additive model with interaction between the two predictors.
+
+```{r}
+mod1 = glm(min.temp ~ latitude + longitude, family = "gaussian", data = ustemp) 
+mod2 = update(mod1, . ~ latitude * longitude)
+AIC(mod1, mod2)
+```
+
+Based on the AIC values of the two models above, we select the model with interaction effect based on the lower AIC score.
+
+## (b)
+
+```{r}
+X = poly(ustemp$latitude, ustemp$longitude)
+x1 = X[,1]
+x2 = X[,2]
+Y  = ustemp$min.temp
+
+pvalue = function(c_n, m = 100) {
+  1 - exp((-sum((1 - pchisq((1:m) * c_n, 1:m))/(1:m))))
+}
+compare_models = function(null_formula, alt_formula, Cn = 4.18){
+  null_model = lm(null_formula)
+  null_logLik = logLik(null_model)
+  altn_model = lm(alt_formula)
+  altn_logLik = logLik(altn_model)
+  Tn = 2 * (altn_logLik - null_logLik) / (attr(altn_logLik, "df") - attr(null_logLik, "df"))
+  reject = Tn > Cn
+  out = data.frame(Tn = Tn, Reject = reject)
+  return(out)
+}
+model_list = function(order, interactions = TRUE) {
+  model_form = vector()
+  k=1
+  for(i in 1:order){
+    if(interactions == TRUE) {
+      for(j in 0:(i-1)){
+        model_form[k] = paste("I(x1^",i," * ","x2^", j,")", sep="")
+        k=k+1
+        model_form[k] = paste("I(x1^",j," * ","x2^", i,")", sep="")
+        k=k+1
+      }
+    }
+    model_form[k] = paste("I(x1^",i," * ","x2^", i,")", sep="")
+    k=k+1
+  }
+  return(model_form)
+}
+order = 3
+model_form = model_list(order)
+null_model = Y ~ I(x1) + I(x2)
+
+output = sapply(order:length(model_form), function(x){
+  compare_models(null_model, paste("Y ~ ", paste(model_form[1:x], collapse = "+")))
+})
+model_comparison = as.data.frame(t(output))
+model_comparison$model_form = model_form[order:length(model_form)]
+best_model_idx = which.max(model_comparison$Tn)
+best_model = model_comparison[best_model_idx,]
+best_formula = paste("Y ~", paste(model_form[1:best_model_idx], collapse = " + ") ) 
+best_p_value = pvalue(unlist(best_model$Tn))
+```
+
+We use order selection idea to construct a test for additivity. The null hypothesis is chosen as the additive model, i.e., $H_0$: $E(Y) = \beta_0 + \beta_1 x_1 + \beta_2 x_2$ vs more complicated alternative models. For this part, we restrict the maximum order to 3, i.e., the alterantive class contains models with the main effects as well as interaction, quadratic or cubic terms which are added sequentially to the null model. We compare each of these models to the null model using the test statistic $T_n$ = $\text{max}_{m \geq 1} \frac{\text{LRT}(M_m, M_0)}{m} > C_n$. $C_n = 2$ leads to the usual AIC, whereas for other values of $C_n$, it leads to a modified AIC (with penalty constant $C_n \neq 2$). We can select $C_n$ such that $P(T_{OS} \leq C_n) = 1 - \alpha$. For this question, we select $C_n = 4.18$ which corresponds to rejecting the null at $\alpha = 5\%$. The list of models that were tried are given below.
+
+```{r}
+model_comparison
+```
+
+Thus, the best model with the highest $T_n \approx 20.9$ value is for the model with the formula $Y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \beta_{12}x_1x_2 + \varepsilon$ and the corresponding pvalue for the test statistic $T_n$ is 0.0000048. Thus, we can conclude that adding other components beyond the first order interaction does not lead to a better model.
+
+## (c)
+In this part, instead of picking the additive model in the previous part, we pick three different null models with each model containing main effecs, quadratic effects, cubic effects (max order k = 3), quartic effects (max order k = 4) and quintic effects (max order k = 5). So each of the three models is picked as the null model with alternative models same as that in part (b) where all the interaction effects are added sequentially.
+
+In each of the cases with the different null models, the model that is always selected is same as the model selected in part (b), i.e., $Y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \beta_{12}x_1x_2 + \varepsilon$. 
 
 # Question 3
 
@@ -104,7 +214,7 @@ y = scale(cars$dist)
 lambda = seq(from = 0, to = 100, length = 100)
 design_matrix = data.frame(speed = x, speed2 = x ^ 2)
 
-## getting the estimated coefficient values for different lambda values between 0 and 1
+## getting the estimated coefficient values for different lambda values between 0 and 100
 estimated_coef = data.frame()
 
 for (i in 1:length(lambda)) {
@@ -118,6 +228,208 @@ From the plot above, we see that as the value of $\lambda$ increases, the shrink
 
 # Appendix (R Code)
 ```{r, eval = FALSE, echo = TRUE}
+## Question 1
+library(faraway)
+library(ggplot2)
+library(dplyr)
 
+motor = motorins
+names(motor)
+
+pairs(motor)
+
+## deciding which correlation method to use; 
+## pearson affected by outliers, spearman
+## https://stats.stackexchange.com/questions/3730/pearsons-or-spearmans-correlation-with-non-normal-data/3733#3733
+## testing multivariate normality of pairs of variables
+MVN::mardiaTest(motor[,5:8], qqplot = TRUE)
+MVN::mardiaTest(motor[,5:6], qqplot = TRUE)
+MVN::mardiaTest(motor[,6:7], qqplot = TRUE)
+MVN::mardiaTest(motor[,7:8], qqplot = TRUE)
+MVN::mardiaTest(motor[,c(5,7)], qqplot = TRUE)
+MVN::mardiaTest(motor[,c(5,8)], qqplot = TRUE)
+MVN::mardiaTest(motor[,c(6,8)], qqplot = TRUE)
+MVN::mardiaTest(motor[,5:7], qqplot = TRUE)
+## not multivariate normal and plenty of outliers based on the pairs plot: chose spearman
+
+# so we stick with spearman correlation
+cor(motor[,5:8], method = "spearman")
+cor(motor[,5:7], method = "spearman")
+cor(motor[,5:8], method = "pearson")
+
+diag(solve(cor(motor[,c(5,6,7)], method = "spearman"))) # gives us the VIF
+diag(solve(cor(motor[,c(5,7)], method = "spearman")))
+diag(solve(cor(motor[,c(6,7)], method = "spearman")))
+diag(solve(cor(motor[,c(5,6)], method = "spearman")))
+
+sqrt(diag(solve(cor(motor[,c(5,6,7)], method = "spearman")))) # gives us the VIF
+sqrt(diag(solve(cor(motor[,c(5,7)], method = "spearman"))))
+sqrt(diag(solve(cor(motor[,c(6,7)], method = "spearman"))))
+sqrt(diag(solve(cor(motor[,c(5,6)], method = "spearman"))))
+
+fit1 = glm(perd ~ ., family = Gamma(link = "inverse"), data = motor[,-6])
+# default link is inverse, others are identity and log; dropping claims and payment
+summary(fit1)
+par(mfrow = c(2,2))
+plot(fit1)
+par(mfrow = c(1,1))
+drop1(fit1, test = "F")
+MASS::stepAIC(fit1, k = 2, scope = list(upper = ~., lower = ~1) , direction = "both")
+anova(fit1, test = "Chisq")
+summary(update(fit1, . ~ . - Kilometres))
+AIC(fit1)
+
+## Different link functions
+
+fit2 = update(fit1, family = Gamma(link = "log"))
+summary(fit2)
+par(mfrow = c(2,2))
+plot(fit2)
+par(mfrow = c(1,1))
+drop1(fit2, test = "F")
+MASS::stepAIC(fit2, k = 2, scope = list(upper = ~., lower = ~1), direction = "both")
+anova(fit2, test = "Chisq")
+AIC(fit2)
+
+## using BIC instead of AIC
+BIC(fit1) # inverse link
+BIC(fit2) # log link
+MASS::stepAIC(fit1, k = log(nrow(motor)), scope = list(upper = ~., lower = ~1) , direction = "both")
+MASS::stepAIC(fit2, k = log(nrow(motor)), scope = list(upper = ~., lower = ~1), direction = "both")
+
+## checking overdispersion for claims
+fit = glm(Claims ~ ., family = "poisson", data = motor[,-8])
+summary(fit)
+par(mfrow = c(2,2))
+plot(fit)
+par(mfrow = c(1,1))
+fit$deviance/fit$df.residual
+var(motor$Claims)/mean(motor$Claims)
+summary(update(fit, . ~ . , family = quasipoisson))
+
+## Question 2
+## (a)
+library(SemiPar)
+data(ustemp)
+
+mod1 = glm(min.temp ~ latitude + longitude, family = "gaussian", data = ustemp) 
+summary(mod1)
+mod2 = update(mod1, . ~ latitude * longitude)
+summary(mod2)
+
+AIC(mod1, mod2)
+
+## (b)
+## The code for (b) and (c) was written jointly with another student
+X = poly(ustemp$latitude, ustemp$longitude)
+x1 = X[,1]
+x2 = X[,2]
+Y  = ustemp$min.temp
+
+pvalue = function(c_n, m = 100) {
+  1 - exp((-sum((1 - pchisq((1:m) * c_n, 1:m))/(1:m))))
+}
+compare_models = function(null_formula, alt_formula, Cn = 4.18){
+  null_model = lm(null_formula)
+  null_logLik = logLik(null_model)
+  altn_model = lm(alt_formula)
+  altn_logLik = logLik(altn_model)
+  Tn = 2 * (altn_logLik - null_logLik) / (attr(altn_logLik, "df") - attr(null_logLik, "df"))
+  reject = Tn > Cn
+  out = data.frame(Tn = Tn, Reject = reject)
+  return(out)
+}
+model_list = function(order, interactions = TRUE) {
+  model_form = vector()
+  k=1
+  for(i in 1:order){
+    if(interactions == TRUE) {
+      for(j in 0:(i-1)){
+        model_form[k] = paste("I(x1^",i," * ","x2^", j,")", sep="")
+        k=k+1
+        model_form[k] = paste("I(x1^",j," * ","x2^", i,")", sep="")
+        k=k+1
+      }
+    }
+    model_form[k] = paste("I(x1^",i," * ","x2^", i,")", sep="")
+    k=k+1
+  }
+  return(model_form)
+}
+order = 3
+model_form = model_list(order)
+null_model = Y ~ I(x1) + I(x2)
+
+output = sapply(order:length(model_form), function(x){
+  compare_models(null_model, paste("Y ~ ", paste(model_form[1:x], collapse = "+")))
+})
+model_comparison = as.data.frame(t(output))
+model_comparison$model_form = model_form[order:length(model_form)]
+best_model_idx = which.max(model_comparison$Tn)
+best_model = model_comparison[best_model_idx,]
+best_formula = paste("Y ~", paste(model_form[1:best_model_idx], collapse = " + ") ) 
+best_p_value = pvalue(unlist(best_model$Tn))
+
+str(model_comparison)
+
+## (c)
+k = 5
+null_form = model_list(k, interactions = FALSE)
+null_model = paste("Y ~ ", paste(null_form, collapse = " + "))
+model_form = model_list(k)
+model_form = setdiff(model_form, null_form)
+model_form = c(null_form, model_form)
+
+output = sapply((k+1):length(model_form), function(x){
+  compare_models(null_model, paste("Y ~ ", paste(model_form[1:x], collapse = "+")))
+})
+model_comparison = as.data.frame(t(output))
+model_comparison$model_form = model_form[(k+1):length(model_form)]
+best_model_idx = which.max(model_comparison$Tn)
+best_model = model_comparison[best_model_idx,]
+best_formula = paste("Y ~", paste(model_form[1:best_model_idx], collapse = " + ") ) 
+best_p_value = pvalue(unlist(best_model$Tn))
+
+model_comparison
+best_formula
+best_p_value
+
+## Question 4
+ridge = function(x, y, lambda) {
+  
+  # x : design matrix
+  # y : response variable
+  # lambda : scalar; lambda parameter in the ridge estimator
+  # \beta = [(X^t * X + \lambda * I_p) ^ -1] * (X^t * Y)
+  # p = ncol(x) in the above statement
+  
+  xt_x = t(x) %*% as.matrix(x)
+  lambda_matrix = lambda * diag(x = 1, nrow = ncol(x))
+  beta_ridge = solve(xt_x + lambda_matrix) %*% (t(x) %*% y) %>% t() %>% data.frame()
+  return(beta_ridge)
+}
+
+x = scale(cars$speed)
+y = scale(cars$dist)
+lambda = seq(from = 0, to = 100, length = 100)
+design_matrix = data.frame(speed = x, speed2 = x ^ 2)
+
+## getting the estimated coefficient values for different lambda values between 0 and 100
+estimated_coef = data.frame()
+
+for (i in 1:length(lambda)) {
+  estimated_coef = rbind(estimated_coef, ridge(design_matrix, y, lambda[i]))
+}
+
+ggplot(data = estimated_coef, aes(x = lambda, y = speed2)) + geom_line() + xlab("lambda") + ylab("Coefficient of Quadratic Effect") + ggtitle("Plot of beta_2 vs lambda") + theme_bw()
+
+## cross checking with inbuilt methods
+lm_ridge = MASS::lm.ridge(y ~ 0 + speed + speed2, data = design_matrix, lambda = lambda)
+lm_ridge$Inter
+lm_ridge$scales # uses the biased scale (sigma) estimator 1/n under the hood instead of unbiased with 1/(n-1) (Bessel's correction)
+summary(lm_ridge)
+plot(lambda, data.frame(t(lm_ridge$coef))$speed2, type = "l")
+MASS::select(lm_ridge)
+lm_ridge$coef
 ```
 
